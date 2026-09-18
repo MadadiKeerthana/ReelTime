@@ -1,1 +1,4 @@
 .venv/
+reeltime.db
+__pycache__/
+*.pyc
