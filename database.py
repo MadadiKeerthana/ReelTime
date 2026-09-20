@@ -41,3 +41,17 @@ def save_event(event):
     
     except sqlite3.IntegrityError:
         return False
+
+def get_events_for_user(user_id):
+    with sqlite3.connect("reeltime.db") as connection:
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+        
+        cursor.execute("SELECT * FROM viewing_events WHERE user_id = ?",
+                       (user_id,)
+                       )
+        
+        rows = cursor.fetchall()
+        
+        return rows
+
