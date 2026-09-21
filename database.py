@@ -122,5 +122,3 @@ def backfill_user_features():
             total_watch_seconds = excluded.total_watch_seconds
             """,
             (user_id, total_watch_seconds, count))
-
-backfill_user_features()
