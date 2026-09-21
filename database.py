@@ -1,4 +1,7 @@
 import sqlite3
+from datetime import datetime, timedelta, timezone
+
+from features import watch_seconds_7d
 
 connection = sqlite3.connect("reeltime.db")
 cursor = connection.cursor()
@@ -18,7 +21,8 @@ cursor.execute("""
     CREATE TABLE IF NOT EXISTS user_features (
         user_id TEXT PRIMARY KEY,
         total_watch_seconds INTEGER NOT NULL,
-        event_count INTEGER NOT NULL
+        event_count INTEGER NOT NULL DEFAULT 0,
+        watch_seconds_7d INTEGER NOT NULL DEFAULT 0
     )
 """)
 
@@ -122,3 +126,30 @@ def backfill_user_features():
             total_watch_seconds = excluded.total_watch_seconds
             """,
             (user_id, total_watch_seconds, count))
+            
+def recompute_7d_feature(user_id, as_of):
+    events = get_events_for_user(user_id)
+    total = watch_seconds_7d(events, as_of)
+    
+    with sqlite3.connect("reeltime.db") as connection:
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        UPDATE user_features
+        SET watch_seconds_7d = ?
+        WHERE user_id = ? """,
+        (total, user_id))
+    
+def recompute_all_7d_features(as_of):
+    with sqlite3.connect("reeltime.db") as connection:
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        SELECT user_id
+        FROM user_features
+        """)
+        
+        rows = cursor.fetchall()
+        
+    for (user_id,) in rows:
+        recompute_7d_feature(user_id, as_of)
