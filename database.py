@@ -17,7 +17,8 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS user_features (
         user_id TEXT PRIMARY KEY,
-        total_watch_seconds INTEGER NOT NULL
+        total_watch_seconds INTEGER NOT NULL,
+        event_count INTEGER NOT NULL
     )
 """)
 
@@ -48,13 +49,15 @@ def process_event(event):
             cursor.execute("""
             INSERT INTO user_features (
                 user_id,
-                total_watch_seconds
+                total_watch_seconds,
+                event_count
             )
-            VALUES (?, ?)
+            VALUES (?, ?, 1)
             
             ON CONFLICT(user_id)
             DO UPDATE SET
-                total_watch_seconds = user_features.total_watch_seconds + excluded.total_watch_seconds
+                total_watch_seconds = user_features.total_watch_seconds + excluded.total_watch_seconds,
+                event_count = user_features.event_count + excluded.event_count
             """,
             (event.user_id, event.watch_seconds))
         
@@ -88,4 +91,36 @@ def get_user_features(user_id):
         row = cursor.fetchone()
         
         return row
-    
+
+def backfill_user_features():
+    with sqlite3.connect("reeltime.db") as connection:
+        cursor = connection.cursor()
+        
+        cursor.execute("""
+        SELECT 
+            user_id,
+            SUM(watch_seconds),
+            COUNT(*)
+        FROM viewing_events
+        GROUP BY user_id
+        """)
+
+        rows = cursor.fetchall()
+        
+        for user_id, total_watch_seconds, count in rows:
+            cursor.execute("""
+            INSERT INTO user_features (
+                user_id,
+                total_watch_seconds,
+                event_count
+            )
+            VALUES (?, ?, ?)
+            
+            ON CONFLICT(user_id)
+            DO UPDATE SET
+            event_count = excluded.event_count,
+            total_watch_seconds = excluded.total_watch_seconds
+            """,
+            (user_id, total_watch_seconds, count))
+
+backfill_user_features()
