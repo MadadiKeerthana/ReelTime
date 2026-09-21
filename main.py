@@ -1,12 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 
-from database import get_user_features, process_event
+from database import get_user_features, initialize_database, process_event
 from models.viewing_event import ViewingEvent
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    initialize_database()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 @app.post("/events")
-def create_event(event: ViewingEvent):
+def create_event(event: ViewingEvent):  
     saved = process_event(event)
     return {"status": "saved"} if saved else {"status": "duplicate"}
 

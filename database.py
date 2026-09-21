@@ -3,35 +3,35 @@ from datetime import datetime, timedelta, timezone
 
 from features import watch_seconds_7d
 
-connection = sqlite3.connect("reeltime.db")
-cursor = connection.cursor()
+DATABASE_PATH = "reeltime.db"
 
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS viewing_events (
-        event_id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        title_id TEXT NOT NULL,
-        genre TEXT NOT NULL,
-        watch_seconds INTEGER NOT NULL,
-        timestamp TEXT NOT NULL
-    )
-""")
+def initialize_database():
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        cursor = connection.cursor()
 
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS user_features (
-        user_id TEXT PRIMARY KEY,
-        total_watch_seconds INTEGER NOT NULL,
-        event_count INTEGER NOT NULL DEFAULT 0,
-        watch_seconds_7d INTEGER NOT NULL DEFAULT 0
-    )
-""")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS viewing_events (
+                event_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                title_id TEXT NOT NULL,
+                genre TEXT NOT NULL,
+                watch_seconds INTEGER NOT NULL,
+                timestamp TEXT NOT NULL
+            )
+        """)
 
-connection.commit()
-connection.close()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_features (
+                user_id TEXT PRIMARY KEY,
+                total_watch_seconds INTEGER NOT NULL,
+                event_count INTEGER NOT NULL DEFAULT 0,
+                watch_seconds_7d INTEGER NOT NULL DEFAULT 0
+            )
+        """)
 
 def process_event(event):
     try:
-        with sqlite3.connect("reeltime.db") as connection:
+        with sqlite3.connect(DATABASE_PATH) as connection:
             cursor = connection.cursor()
             cursor.execute("""
                 INSERT INTO viewing_events (
@@ -71,7 +71,7 @@ def process_event(event):
         return False
 
 def get_events_for_user(user_id):
-    with sqlite3.connect("reeltime.db") as connection:
+    with sqlite3.connect(DATABASE_PATH) as connection:
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
         
@@ -84,7 +84,7 @@ def get_events_for_user(user_id):
         return rows
            
 def get_user_features(user_id):
-    with sqlite3.connect("reeltime.db") as connection:
+    with sqlite3.connect(DATABASE_PATH) as connection:
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
         
@@ -97,7 +97,7 @@ def get_user_features(user_id):
         return row
 
 def backfill_user_features():
-    with sqlite3.connect("reeltime.db") as connection:
+    with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
         
         cursor.execute("""
@@ -131,7 +131,7 @@ def recompute_7d_feature(user_id, as_of):
     events = get_events_for_user(user_id)
     total = watch_seconds_7d(events, as_of)
     
-    with sqlite3.connect("reeltime.db") as connection:
+    with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
 
         cursor.execute("""
@@ -141,7 +141,7 @@ def recompute_7d_feature(user_id, as_of):
         (total, user_id))
     
 def recompute_all_7d_features(as_of):
-    with sqlite3.connect("reeltime.db") as connection:
+    with sqlite3.connect(DATABASE_PATH) as connection:
         cursor = connection.cursor()
 
         cursor.execute("""
