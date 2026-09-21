@@ -14,10 +14,17 @@ cursor.execute("""
     )
 """)
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_features (
+        user_id TEXT PRIMARY KEY,
+        total_watch_seconds INTEGER NOT NULL
+    )
+""")
+
 connection.commit()
 connection.close()
 
-def save_event(event):
+def process_event(event):
     try:
         with sqlite3.connect("reeltime.db") as connection:
             cursor = connection.cursor()
@@ -36,7 +43,21 @@ def save_event(event):
                     event.genre,
                     event.watch_seconds,
                     event.timestamp.isoformat())
-            )  
+            ) 
+            
+            cursor.execute("""
+            INSERT INTO user_features (
+                user_id,
+                total_watch_seconds
+            )
+            VALUES (?, ?)
+            
+            ON CONFLICT(user_id)
+            DO UPDATE SET
+                total_watch_seconds = user_features.total_watch_seconds + excluded.total_watch_seconds
+            """,
+            (event.user_id, event.watch_seconds))
+        
         return True
     
     except sqlite3.IntegrityError:
@@ -54,4 +75,17 @@ def get_events_for_user(user_id):
         rows = cursor.fetchall()
         
         return rows
-
+           
+def get_user_features(user_id):
+    with sqlite3.connect("reeltime.db") as connection:
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+        
+        cursor.execute("""SELECT * FROM user_features
+                       WHERE user_id = ?
+                       """, 
+                       (user_id,))
+        row = cursor.fetchone()
+        
+        return row
+    
