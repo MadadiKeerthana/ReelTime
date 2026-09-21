@@ -5,10 +5,15 @@ import database
 from models.viewing_event import ViewingEvent
 
 
-def test_duplicate_event_does_not_double_count(tmp_path):
+def test_duplicate_event_does_not_double_count(tmp_path, monkeypatch):
     test_db = tmp_path/"test_reeltime.db"
     
-    database.DATABASE_PATH = str(test_db)
+    monkeypatch.setattr(
+        database,
+        "DATABASE_PATH",
+        str(test_db)
+    )
+    
     database.initialize_database()
     
     event = ViewingEvent(
@@ -45,10 +50,15 @@ def test_duplicate_event_does_not_double_count(tmp_path):
         
     assert raw_count == 1
     
-def test_recompute_7d_feature_expires_old_events(tmp_path):
+def test_recompute_7d_feature_expires_old_events(tmp_path, monkeypatch):
     test_db = tmp_path / "test_reeltime.db"
-     
-    database.DATABASE_PATH = str(test_db)
+    
+    monkeypatch.setattr(
+        database,
+        "DATABASE_PATH",
+        str(test_db)
+    )
+
     database.initialize_database()
      
     event1 = ViewingEvent(

@@ -1,12 +1,17 @@
 import sqlite3
-from datetime import datetime, timedelta, timezone
 
 from features import watch_seconds_7d
 
 DATABASE_PATH = "reeltime.db"
 
+def get_connection():
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.row_factory = sqlite3.Row
+    
+    return connection
+
 def initialize_database():
-    with sqlite3.connect(DATABASE_PATH) as connection:
+    with get_connection() as connection:
         cursor = connection.cursor()
 
         cursor.execute("""
@@ -31,7 +36,7 @@ def initialize_database():
 
 def process_event(event):
     try:
-        with sqlite3.connect(DATABASE_PATH) as connection:
+        with get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute("""
                 INSERT INTO viewing_events (
@@ -71,8 +76,7 @@ def process_event(event):
         return False
 
 def get_events_for_user(user_id):
-    with sqlite3.connect(DATABASE_PATH) as connection:
-        connection.row_factory = sqlite3.Row
+    with get_connection() as connection:
         cursor = connection.cursor()
         
         cursor.execute("SELECT * FROM viewing_events WHERE user_id = ?",
@@ -84,8 +88,7 @@ def get_events_for_user(user_id):
         return rows
            
 def get_user_features(user_id):
-    with sqlite3.connect(DATABASE_PATH) as connection:
-        connection.row_factory = sqlite3.Row
+    with get_connection() as connection:
         cursor = connection.cursor()
         
         cursor.execute("""SELECT * FROM user_features
@@ -97,7 +100,7 @@ def get_user_features(user_id):
         return row
 
 def backfill_user_features():
-    with sqlite3.connect(DATABASE_PATH) as connection:
+    with get_connection() as connection:
         cursor = connection.cursor()
         
         cursor.execute("""
@@ -131,7 +134,7 @@ def recompute_7d_feature(user_id, as_of):
     events = get_events_for_user(user_id)
     total = watch_seconds_7d(events, as_of)
     
-    with sqlite3.connect(DATABASE_PATH) as connection:
+    with get_connection() as connection:
         cursor = connection.cursor()
 
         cursor.execute("""
@@ -141,7 +144,7 @@ def recompute_7d_feature(user_id, as_of):
         (total, user_id))
     
 def recompute_all_7d_features(as_of):
-    with sqlite3.connect(DATABASE_PATH) as connection:
+    with get_connection() as connection:
         cursor = connection.cursor()
 
         cursor.execute("""
